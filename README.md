@@ -58,6 +58,10 @@ Example Entry:
 67647324PRM_2018_0F,ehsan.irannejad,ein1,ein1,1.0,flexlmserver,8888,121,2018-09-05 10:41:00,2018-09-05 16:32:15
 ```
 
+## Feature Code Lookups
+
+A set of CSV files are inside `Feature Codes` directory. They have been gathered from [ADN Feature Codes](https://knowledge.autodesk.com/customer-service/network-license-administration/managing-network-licenses/interpreting-your-license-file/feature-codes)
+
 ## Dependencies
 
 - FlexLM Utility: `lmutil.exe` is shipped inside the FlexLM installation directory. Make sure to add the path to the `%PATH%` env var. `lmutil` can be used from local machines that see the license server as well. You can download and install [Autodesk Network License Manager](https://knowledge.autodesk.com/search-result/caas/downloads/content/autodesk-network-license-manager-for-windows.html) on your machine to use the `lmutil` utility.
