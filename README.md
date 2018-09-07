@@ -28,13 +28,13 @@ Example: e.g. `2018-09-05 features.csv`
 ##### Schema
 
 ``` csv
-stamp,feature_name,feature_code,feature_version,vendor,license_type,issued,used,users
+stamp,feature_code,feature_version,vendor,license_type,issued,used,users
 ```
 
 Example Entry:
 
 ``` csv
-Example 2018-09-05 16:32:15,67647324PRM,2018_0,1.000,--,--,125,12,11
+Example 2018-09-05 16:32:15,67647324PRM_2018_0F,1.000,--,--,125,12,11
 ```
 
 
@@ -42,20 +42,20 @@ Example 2018-09-05 16:32:15,67647324PRM,2018_0,1.000,--,--,125,12,11
 
 There is one user log file per each license feature. User logs are good for tracking license usage by specific users.
 
-Filename format: `YYYY-MM-DD <feature_name> <feature_code> users.csv`
+Filename format: `YYYY-MM-DD <feature_code> users.csv`
 
-Example: e.g. `2018-09-05 67647324PRM 2018_0 users.csv`
+Example: e.g. `2018-09-05 67647324PRM_2018_0F users.csv`
 
 ##### Schema
 
 ``` csv
-feature_name,userid,host,display,feature_version,server_host,server_port,license_handle,checkout_datetime,update_time
+feature_code,userid,host,display,feature_version,server_host,server_port,license_handle,checkout_datetime,update_time
 ```
 
 Example Entry:
 
 ``` csv
-67647324PRM,ehsan.irannejad,ein1,ein1,1.0,flexlmserver,8888,121,2018-09-05 10:41:00,2018-09-05 16:32:15
+67647324PRM_2018_0F,ehsan.irannejad,ein1,ein1,1.0,flexlmserver,8888,121,2018-09-05 10:41:00,2018-09-05 16:32:15
 ```
 
 ## Dependencies

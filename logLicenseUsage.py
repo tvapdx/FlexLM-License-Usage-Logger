@@ -12,7 +12,7 @@ from collections import namedtuple
 DATETIME_FORMAT = '%Y-%m-%d %H:%M:%S'
 FILENAME_DATETIME_FORMAT = '%Y-%m-%d'
 FEATURES_FILENAME_FORMAT = '{datetime} features.csv'
-USERS_FILENAME_FORMAT = '{datetime} {feat_name} {feat_code} users.csv'
+USERS_FILENAME_FORMAT = '{datetime} {feat_code} users.csv'
 
 
 # DATA TYPES ==================================================================
@@ -22,7 +22,7 @@ LMUser = namedtuple('LMUser', ['userid', 'host', 'display', 'feature_version',
                                'overnight', 'update_time'])
 
 
-LMFeature = namedtuple('LMFeature', ['feature_name', 'feature_code',
+LMFeature = namedtuple('LMFeature', ['feature_code',
                                      'feature_version', 'vendor',
                                      'license_type', 'issued', 'used',
                                      'users'])
@@ -77,16 +77,15 @@ def extract_feature(feat_data, time, lmversion):
             feature_data.append(fdata)
 
     feature_license_info = feature_data[0]
-    flmm = re.match(r'(.+?)_(.+?)?F:  ' \
+    flmm = re.match(r'(.+?)?:  ' \
                     r'\(Total of (\d+?) license[s]* issued;  ' \
                     r'Total of (\d+?) license[s]* in use\)',
                     feature_license_info)
     if flmm:
-        revit_version = flmm.groups()[1]
-        if revit_version:
-            feature_name = flmm.groups()[0]
-            issued = flmm.groups()[2]
-            used = flmm.groups()[3]
+        feature_code = flmm.groups()[0]
+        if feature_code:
+            issued = flmm.groups()[1]
+            used = flmm.groups()[2]
 
             feature_version = vendor = license_type = None
             users = []
@@ -118,8 +117,7 @@ def extract_feature(feat_data, time, lmversion):
                 if len(feature_data) > 4:
                     users = extract_users(feature_data[4:], time=time)
 
-            return LMFeature(feature_name=feature_name,
-                             feature_code=revit_version,
+            return LMFeature(feature_code=feature_code,
                              feature_version=feature_version or '--',
                              vendor=vendor or '--',
                              license_type=license_type or '--',
@@ -132,7 +130,6 @@ def write_users(feature, dest_path):
     user_file = op.join(
             dest_path,
             USERS_FILENAME_FORMAT.format(
-                feat_name=feature.feature_name,
                 feat_code=feature.feature_code,
                 datetime=dt.datetime.now().strftime(FILENAME_DATETIME_FORMAT)
                 ))
@@ -141,7 +138,7 @@ def write_users(feature, dest_path):
             csvwriter = \
                 csv.writer(csvfile,
                            quoting=csv.QUOTE_MINIMAL, lineterminator='\n')        
-            csvwriter.writerow(['feature_name', 'userid', 'host', 'display',
+            csvwriter.writerow(['feature_code', 'userid', 'host', 'display',
                                 'feature_version',
                                 'server_host', 'server_port', 'license_handle',
                                 'checkout_datetime', 'update_time'])
@@ -150,7 +147,7 @@ def write_users(feature, dest_path):
         csvwriter = \
             csv.writer(csvfile, quoting=csv.QUOTE_MINIMAL, lineterminator='\n')        
         for u in feature.users:
-            csvwriter.writerow([feature.feature_name,
+            csvwriter.writerow([feature.feature_code,
                                 u.userid, u.host, u.display, u.feature_version,
                                 u.server_host, u.server_port, u.license_handle,
                                 u.checkout_datetime, u.update_time])
@@ -168,7 +165,7 @@ def write_features(features, dest_path):
             csvwriter = \
                 csv.writer(csvfile,
                            quoting=csv.QUOTE_MINIMAL, lineterminator='\n')        
-            csvwriter.writerow(['stamp', 'feature_name', 'feature_code',
+            csvwriter.writerow(['stamp', 'feature_code',
                                 'feature_version', 'vendor', 'license_type',
                                 'issued', 'used', 'users'])
     with open(feat_file, 'a') as csvfile:
@@ -176,7 +173,7 @@ def write_features(features, dest_path):
             csv.writer(csvfile, quoting=csv.QUOTE_MINIMAL, lineterminator='\n')        
         for f in features:
             csvwriter.writerow([dt.datetime.now().strftime(DATETIME_FORMAT),
-                                f.feature_name, f.feature_code,
+                                f.feature_code,
                                 f.feature_version, f.vendor, f.license_type,
                                 f.issued, f.used, len(f.users)])
             if write_users_log:
