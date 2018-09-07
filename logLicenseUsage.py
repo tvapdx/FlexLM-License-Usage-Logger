@@ -204,6 +204,7 @@ def get_lmstatus():
 
 # MAIN() ======================================================================
 
+timestamp = dt.datetime.now().strftime(DATETIME_FORMAT)
 lmversion = determine_lmutil_version()
 
 status_report = get_lmstatus()
@@ -217,9 +218,7 @@ if status_report:
 
     # process the output and extract license usage info (issued vs used)
     for feat_data in features_data:
-        lmf = extract_feature(feat_data,
-                              dt.datetime.now().strftime(DATETIME_FORMAT),
-                              lmversion)
+        lmf = extract_feature(feat_data, timestamp, lmversion)
         if lmf:
             features.append(lmf)
 
