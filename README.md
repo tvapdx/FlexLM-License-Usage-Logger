@@ -26,7 +26,7 @@ dbflexuserstable = flexlmusers or anything else
 
 ## Logging to a Database
 
-Logs could be pushed to a database server. This script uses the `records` python module to talk to the database server and builds a connection string based on the configurations provided in the config file.
+Logs could be pushed to a database server. This script uses the `records` python module to talk to the database server and builds a connection string based on the configurations provided in the config file. To log to a database, provide the database info in the config file and also set `usedb = True`
 
 ### Feature logs
 
@@ -83,7 +83,9 @@ Example Entry:
 ```
 ## Logging to a Directory
 
-Log could be saved as CSV files. By default one csv file will be created for each day of logging. In current implementation, there are two types of logs for each day:
+Log could be saved as CSV files. By default one csv file will be created for each day of logging. To log to a directory, provide the path in the config file and also set `usedb = False`
+
+In current implementation, there are two types of logs for each day:
 
 ### Feature logs
 
