@@ -7,6 +7,8 @@ import csv
 import configparser
 from collections import namedtuple
 
+import records
+
 
 # INTERNAL CONFIGS ============================================================
 DATETIME_FORMAT = '%Y-%m-%d %H:%M:%S'
@@ -14,6 +16,8 @@ FILENAME_DATETIME_FORMAT = '%Y-%m-%d'
 FEATURES_FILENAME_FORMAT = '{datetime} features.csv'
 USERS_FILENAME_FORMAT = '{datetime} {feat_code} users.csv'
 
+# main config filepath. can include env vars
+CFG_GILEPATH = r'%programdata%\FlexLMLicenseUsageLoggerConfig.ini'
 
 # DATA TYPES ==================================================================
 LMUser = namedtuple('LMUser', ['userid', 'host', 'display', 'feature_version',
@@ -30,14 +34,27 @@ LMFeature = namedtuple('LMFeature', ['feature_code',
 
 # FUNCTIONS ====================================================================
 def get_config():
-    cfg_file = op.expandvars(r'%programdata%\logLicenseUsage.ini')
+    cfg_file = op.expandvars(CFG_GILEPATH)
     if not op.exists(cfg_file):
         raise Exception('Config file does not exit: {}'.format(cfg_file))
     
     config = configparser.ConfigParser()
     config.read(cfg_file)
     return config['DEFAULT']
-    
+
+
+def get_db(cfg):
+    cnn_string = \
+        '{dbms}://{dbuser}:{dbpass}@{dbhost}:{dbport}/{dbname}'.format(
+            dbms=cfg['dbms'],
+            dbuser=cfg['dbuser'],
+            dbpass=cfg['dbpass'],
+            dbhost=cfg['dbhost'],
+            dbport=cfg['dbport'],
+            dbname=cfg['dbname']
+        )
+    return records.Database(cnn_string)  
+
 
 def extract_users(feat_data, time):
     users = []
@@ -126,35 +143,41 @@ def extract_feature(feat_data, time, lmversion):
                              users=users)
 
 
-def write_users(feature, dest_path):
-    user_file = op.join(
+def write_users(features, dest_path):
+    for feature in features:
+        user_file = op.join(
             dest_path,
             USERS_FILENAME_FORMAT.format(
                 feat_code=feature.feature_code,
                 datetime=dt.datetime.now().strftime(FILENAME_DATETIME_FORMAT)
                 ))
-    if not op.exists(user_file):
-        with open(user_file, 'w') as csvfile:
+        if not op.exists(user_file):
+            with open(user_file, 'w') as csvfile:
+                csvwriter = \
+                    csv.writer(csvfile,
+                            quoting=csv.QUOTE_MINIMAL, lineterminator='\n')        
+                csvwriter.writerow(
+                    ['feature_code', 'userid', 'host','display',
+                     'feature_version',
+                     'server_host', 'server_port', 'license_handle',
+                     'checkout_datetime', 'update_time']
+                    )
+
+        with open(user_file, 'a') as csvfile:
             csvwriter = \
                 csv.writer(csvfile,
-                           quoting=csv.QUOTE_MINIMAL, lineterminator='\n')        
-            csvwriter.writerow(['feature_code', 'userid', 'host', 'display',
-                                'feature_version',
-                                'server_host', 'server_port', 'license_handle',
-                                'checkout_datetime', 'update_time'])
-
-    with open(user_file, 'a') as csvfile:
-        csvwriter = \
-            csv.writer(csvfile, quoting=csv.QUOTE_MINIMAL, lineterminator='\n')        
-        for u in feature.users:
-            csvwriter.writerow([feature.feature_code,
-                                u.userid, u.host, u.display, u.feature_version,
-                                u.server_host, u.server_port, u.license_handle,
-                                u.checkout_datetime, u.update_time])
+                           quoting=csv.QUOTE_MINIMAL,
+                           lineterminator='\n')        
+            for u in feature.users:
+                csvwriter.writerow(
+                    [feature.feature_code,
+                     u.userid, u.host, u.display, u.feature_version,
+                     u.server_host, u.server_port, u.license_handle,
+                     u.checkout_datetime, u.update_time]
+                                    )
 
 
 def write_features(features, dest_path):
-    write_users_log = get_config()['logusers'].lower() == 'true'
     feat_file = op.join(
             dest_path,
             FEATURES_FILENAME_FORMAT.format(
@@ -176,8 +199,54 @@ def write_features(features, dest_path):
                                 f.feature_code,
                                 f.feature_version, f.vendor, f.license_type,
                                 f.issued, f.used, len(f.users)])
-            if write_users_log:
-                write_users(f, dest_path)
+
+
+def push_users(features, db, cfg):
+    insertquery = \
+    "INSERT INTO {table} values ".format(table=cfg['dbflexuserstable'])
+    query_values_template  = \
+        "('{fcode}', '{userid}', '{host}', '{display}', " \
+        "'{fver}', '{shost}', '{sport}', '{lichandle}', " \
+        "'{ctime}', '{utime}')"
+    data_values = []
+    for f in features:
+        for u in f.users:
+            data_values.append(query_values_template.format(
+                fcode=f.feature_code,
+                userid=u.userid,
+                host=u.host,
+                display=u.display,
+                fver=u.feature_version,
+                shost=u.server_host,
+                sport=u.server_port,
+                lichandle=u.license_handle,
+                ctime=u.checkout_datetime,
+                utime=u.update_time
+            ))
+    insertquery += ', '.join(data_values) + ';'
+    db.query(insertquery)
+
+
+def push_features(features, db, cfg):
+    insertquery = \
+        "INSERT INTO {table} values ".format(table=cfg['dbflexfeaturestable'])
+    query_values_template  = \
+        "('{dtime}', '{fcode}', '{fver}', '{vendor}', " \
+        "'{lictype}', '{issued}', '{used}', '{ausers}')"
+    data_values = []
+    for f in features:
+        data_values.append(query_values_template.format(
+            dtime=dt.datetime.now().strftime(DATETIME_FORMAT),
+            fcode=f.feature_code,
+            fver=f.feature_version,
+            vendor=f.vendor,
+            lictype=f.license_type,
+            issued=f.issued,
+            used=f.used,
+            ausers=len(f.users),
+        ))
+    insertquery += ', '.join(data_values) + ';'
+    db.query(insertquery)
 
 
 def determine_lmutil_version():
@@ -201,8 +270,15 @@ def get_lmstatus():
 
 # MAIN() ======================================================================
 
+# save timestamp so all records use the same and are not affected by io
 timestamp = dt.datetime.now().strftime(DATETIME_FORMAT)
 lmversion = determine_lmutil_version()
+
+# get config
+cfg = get_config()
+print('configs:')
+for key, value in cfg.items():
+    print('{}= {}'.format(key, value))
 
 status_report = get_lmstatus()
 if status_report:
@@ -219,5 +295,16 @@ if status_report:
         if lmf:
             features.append(lmf)
 
+    # check whether to log usage
+    write_users_log = cfg['logusers'].lower() == 'true'
     # write the license usage info
-    write_features(features, get_config()['dbpath'])
+    if cfg['usedb']:
+        db = get_db(cfg)
+        push_features(features, db, cfg)
+        if write_users_log:
+            push_users(features, db, cfg)
+    else:
+        logpath = cfg['logpath']
+        write_features(features, logpath)
+        if write_users_log:
+            write_users(features, logpath)
