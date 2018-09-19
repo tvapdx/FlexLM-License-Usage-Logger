@@ -80,7 +80,7 @@ def extract_users(feat_data, time):
                                     co_dt.strftime(DATETIME_FORMAT),
                                 active_time=round(timediff.seconds / 3600),
                                 overnight=timediff.days > 0,
-                                update_time=time))
+                                update_time=time.strftime(DATETIME_FORMAT)))
 
     # process the output and extract usernames and license checkout info
     return users
@@ -133,7 +133,7 @@ def extract_feature(feat_data, time, lmversion):
                 if len(feature_data) > 4:
                     users = extract_users(feature_data[4:], time=time)
 
-            return LMFeature(timestamp=time,
+            return LMFeature(timestamp=time.strftime(DATETIME_FORMAT),
                              feature_code=feature_code,
                              feature_version=feature_version or '--',
                              vendor=vendor or '--',
@@ -337,7 +337,7 @@ def get_lmstatus():
 # MAIN() ======================================================================
 
 # save timestamp so all records use the same and are not affected by io
-timestamp = dt.datetime.now().strftime(DATETIME_FORMAT)
+timestamp = dt.datetime.now()
 lmversion = determine_lmutil_version()
 
 # get config
