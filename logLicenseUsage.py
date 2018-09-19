@@ -32,6 +32,7 @@ LMFeature = namedtuple('LMFeature', ['timestamp', 'feature_code',
                                      'license_type', 'issued', 'used',
                                      'users'])
 
+LMFeatureCode = namedtuple('LMFeatureCode', ['feature_name', 'feature_codes'])
 
 # FUNCTIONS ====================================================================
 def get_config():
@@ -270,6 +271,25 @@ def read_features(feat_file):
     return features
 
 
+def read_feature_codes(featcode_file):
+    featurecodes = []
+    with open(featcode_file, 'r') as csvfile:
+        csvreader = \
+            csv.reader(csvfile, quoting=csv.QUOTE_MINIMAL, lineterminator='\n')        
+        first_row = True
+        for row in csvreader:
+            if first_row:
+                first_row = False
+                continue
+            else:
+                featurecodes.append(
+                    LMFeatureCode(
+                        feature_name=row[0],
+                        feature_codes=';'.join(row[1:]))
+                )
+    return featurecodes
+
+
 def push_users(features, db, cfg):
     insertquery = \
     "INSERT INTO {table} values ".format(table=cfg['dbflexuserstable'])
@@ -313,6 +333,22 @@ def push_features(features, db, cfg):
             issued=f.issued,
             used=f.used,
             ausers=len(f.users),
+        ))
+    insertquery += ', '.join(data_values) + ';'
+    db.query(insertquery)
+
+
+def push_featcodes(featcodes, db, cfg):
+    insertquery = \
+        "INSERT INTO {table} values ".format(
+            table=cfg['dbflexfeaturecodestable']
+            )
+    query_values_template = "('{fname}', '{fcodes}')"
+    data_values = []
+    for fc in featcodes:
+        data_values.append(query_values_template.format(
+            fname=fc.feature_name,
+            fcodes=fc.feature_codes,
         ))
     insertquery += ', '.join(data_values) + ';'
     db.query(insertquery)
@@ -368,6 +404,15 @@ if args:
                 .format(len(exist_feat.users), ff))
             if exist_feat.users:
                 push_users([exist_feat], get_db(cfg), cfg)
+
+    elif args[0] == 'pushfc':
+        featcodes_path = op.join(op.dirname(__file__), 'Feature Codes')
+        for ff in sorted(os.listdir(featcodes_path)):
+            featcodes = read_feature_codes(op.join(featcodes_path, ff))
+            print('{} feature codes read from file: {}'
+                .format(len(featcodes), ff))
+            if featcodes:
+                push_featcodes(featcodes, get_db(cfg), cfg)
 else:
     # othewise pull the lm status and update
     status_report = get_lmstatus()

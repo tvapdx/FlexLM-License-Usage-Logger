@@ -21,6 +21,7 @@ dbname = database name
 # see below for table creation SQL
 # revise the table names as necessary
 dbflexfeaturestable = flexlmfeatures or anything else
+dbflexfeaturecodestable = flexlmfeaturecodes or anything else
 dbflexuserstable = flexlmusers or anything else
 ```
 
@@ -131,6 +132,45 @@ Example Entry:
 ## Feature Code Lookups
 
 A set of CSV files are inside `Feature Codes` directory. They have been gathered from [ADN Feature Codes](https://knowledge.autodesk.com/customer-service/network-license-administration/managing-network-licenses/interpreting-your-license-file/feature-codes)
+
+These tables can be used to lookup product names from feature codes.
+
+You can use the `pushfc` option on the logging script to automatically push the feature codes csv file included in `Feature Codes` directory to your database.
+
+```bash
+$ pipenv shell
+$ python logLicenseUsage.py pushfc
+```
+
+##### Table Schema
+
+``` sql
+-- modify table name as needed
+CREATE TABLE flexlmfeaturecodes (
+    fname varchar(255),
+    fcodes text
+);
+```
+
+## Pushing CSV Logs to Database
+
+If you had started logging the license usage to csv log files and then decided to push these logs to your database, you can use the `pushf` and `pushu` options. Make sure the database is configured first and connection information is included in the config file.
+
+To push feature log files (`*feature.csv`):
+
+```bash
+$ pipenv shell
+$ python logLicenseUsage.py pushf /path/to/feature/files/dir
+```
+
+To push user log files (`*users.csv`):
+
+```bash
+$ pipenv shell
+$ python logLicenseUsage.py pushu /path/to/user/files/dir
+```
+
+
 
 ## Dependencies
 
