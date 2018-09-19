@@ -144,12 +144,20 @@ $ python logLicenseUsage.py pushfc
 
 ##### Table Schema
 
+`fcodes` is a `;` separateed list of possible feature codes for each product.
+
 ``` sql
 -- modify table name as needed
 CREATE TABLE flexlmfeaturecodes (
     fname varchar(255),
     fcodes text
 );
+```
+
+Example Entry:
+
+``` csv
+Autodesk Navisworks Simulate 2017,86767NAVSIM_2017_0F;85838NAVSIM_F;85838NAVSIM_T_F
 ```
 
 ## Pushing CSV Logs to Database
