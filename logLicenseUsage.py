@@ -57,7 +57,7 @@ def get_db(cfg):
     return records.Database(cnn_string)  
 
 
-def extract_users(feat_data, time):
+def extract_users(feature_code, feat_data, time):
     users = []
     for fdata in feat_data:
         udm = re.match(r'\s+(.+) (.+) (.+) \(v(.+)\) \((.+)/(.+) (.+)\), '
@@ -69,7 +69,8 @@ def extract_users(feat_data, time):
                                 hour=int(udm.groups()[10]),
                                 minute=int(udm.groups()[11]))
             timediff = time - co_dt
-            users.append(LMUser(userid=udm.groups()[0],
+            users.append(LMUser(feature_code=feature_code,
+                                userid=udm.groups()[0],
                                 host=udm.groups()[1],
                                 display=udm.groups()[2],
                                 feature_version=udm.groups()[3],
@@ -131,7 +132,9 @@ def extract_feature(feat_data, time, lmversion):
                         license_type = flm.groups()[0]
 
                 if len(feature_data) > 4:
-                    users = extract_users(feature_data[4:], time=time)
+                    users = extract_users(feature_code,
+                                          feature_data[4:],
+                                          time=time)
 
             return LMFeature(timestamp=time.strftime(DATETIME_FORMAT),
                              feature_code=feature_code,
