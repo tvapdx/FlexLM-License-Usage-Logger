@@ -26,7 +26,7 @@ dbflexuserstable = flexlmusers or anything else
 
 ## Logging to a Database
 
-Logs could be pushed to a database server. This script uses the `records` python module to talk to the database server and builds a connection string based on the configurations provided in the config file. To log to a database, provide the database info in the config file and also set `usedb = True`
+Logs could be pushed to a database server. This script uses the [records](https://github.com/kennethreitz/records) python module to talk to the database server and builds a connection string based on the configurations provided in the config file. To log to a database, provide the database info in the config file and also set `usedb = True`
 
 ### Feature logs
 

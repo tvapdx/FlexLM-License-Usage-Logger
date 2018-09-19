@@ -1,5 +1,6 @@
 import os
 import os.path as op
+import sys
 import re
 import subprocess
 import datetime as dt
@@ -20,13 +21,13 @@ USERS_FILENAME_FORMAT = '{datetime} {feat_code} users.csv'
 CFG_GILEPATH = r'%programdata%\FlexLMLicenseUsageLoggerConfig.ini'
 
 # DATA TYPES ==================================================================
-LMUser = namedtuple('LMUser', ['userid', 'host', 'display', 'feature_version',
-                               'server_host', 'server_port', 'license_handle',
-                               'checkout_datetime', 'active_time',
-                               'overnight', 'update_time'])
+LMUser = namedtuple('LMUser', ['feature_code', 'userid', 'host', 'display',
+                               'feature_version', 'server_host', 'server_port',
+                               'license_handle', 'checkout_datetime',
+                               'active_time', 'overnight', 'update_time'])
 
 
-LMFeature = namedtuple('LMFeature', ['feature_code',
+LMFeature = namedtuple('LMFeature', ['timestamp', 'feature_code',
                                      'feature_version', 'vendor',
                                      'license_type', 'issued', 'used',
                                      'users'])
@@ -67,7 +68,7 @@ def extract_users(feat_data, time):
                                 day=int(udm.groups()[9]),
                                 hour=int(udm.groups()[10]),
                                 minute=int(udm.groups()[11]))
-            timediff = dt.datetime.now() - co_dt
+            timediff = time - co_dt
             users.append(LMUser(userid=udm.groups()[0],
                                 host=udm.groups()[1],
                                 display=udm.groups()[2],
@@ -79,9 +80,7 @@ def extract_users(feat_data, time):
                                     co_dt.strftime(DATETIME_FORMAT),
                                 active_time=round(timediff.seconds / 3600),
                                 overnight=timediff.days > 0,
-                                update_time=time\
-                                    
-                                ))
+                                update_time=time))
 
     # process the output and extract usernames and license checkout info
     return users
@@ -134,7 +133,8 @@ def extract_feature(feat_data, time, lmversion):
                 if len(feature_data) > 4:
                     users = extract_users(feature_data[4:], time=time)
 
-            return LMFeature(feature_code=feature_code,
+            return LMFeature(timestamp=time,
+                             feature_code=feature_code,
                              feature_version=feature_version or '--',
                              vendor=vendor or '--',
                              license_type=license_type or '--',
@@ -170,7 +170,7 @@ def write_users(features, dest_path):
                            lineterminator='\n')        
             for u in feature.users:
                 csvwriter.writerow(
-                    [feature.feature_code,
+                    [u.feature_code,
                      u.userid, u.host, u.display, u.feature_version,
                      u.server_host, u.server_port, u.license_handle,
                      u.checkout_datetime, u.update_time]
@@ -195,10 +195,76 @@ def write_features(features, dest_path):
         csvwriter = \
             csv.writer(csvfile, quoting=csv.QUOTE_MINIMAL, lineterminator='\n')        
         for f in features:
-            csvwriter.writerow([dt.datetime.now().strftime(DATETIME_FORMAT),
+            csvwriter.writerow([f.timestamp,
                                 f.feature_code,
                                 f.feature_version, f.vendor, f.license_type,
                                 f.issued, f.used, len(f.users)])
+
+
+def read_users(user_file):
+    users = []
+    with open(user_file, 'r') as csvfile:
+        csvreader = \
+            csv.reader(csvfile, quoting=csv.QUOTE_MINIMAL, lineterminator='\n')
+        first_row = True
+        for row in csvreader:
+            if first_row:
+                first_row = False
+                continue
+            elif len(row) == 10:
+                users.append(
+                    LMUser(
+                        feature_code=row[0],
+                        userid=row[1],
+                        host=row[2],
+                        display=row[3],
+                        feature_version=row[4],
+                        server_host=row[5],
+                        server_port=row[6],
+                        license_handle=row[7],
+                        checkout_datetime=row[8],
+                        active_time=None,
+                        overnight=None,
+                        update_time=row[9]
+                        )
+                )
+    # use a lmfearure as wrapper for compatibility with push_users
+    return LMFeature(
+        timestamp=None,
+        feature_code=None,
+        feature_version=None,
+        vendor=None,
+        license_type=None,
+        issued=None,
+        used=None,
+        users=users
+        )
+
+
+def read_features(feat_file):
+    features = []
+    with open(feat_file, 'r') as csvfile:
+        csvreader = \
+            csv.reader(csvfile, quoting=csv.QUOTE_MINIMAL, lineterminator='\n')        
+        first_row = True
+        for row in csvreader:
+            if first_row:
+                first_row = False
+                continue
+            elif len(row) == 8:
+                features.append(
+                    LMFeature(
+                        timestamp=row[0],
+                        feature_code=row[1],
+                        feature_version=row[2],
+                        vendor=row[3],
+                        license_type=row[4],
+                        issued=row[5],
+                        used=row[6],
+                        users='*' * int(row[7])
+                        )
+                )
+    return features
 
 
 def push_users(features, db, cfg):
@@ -212,7 +278,7 @@ def push_users(features, db, cfg):
     for f in features:
         for u in f.users:
             data_values.append(query_values_template.format(
-                fcode=f.feature_code,
+                fcode=u.feature_code,
                 userid=u.userid,
                 host=u.host,
                 display=u.display,
@@ -236,7 +302,7 @@ def push_features(features, db, cfg):
     data_values = []
     for f in features:
         data_values.append(query_values_template.format(
-            dtime=dt.datetime.now().strftime(DATETIME_FORMAT),
+            dtime=f.timestamp,
             fcode=f.feature_code,
             fver=f.feature_version,
             vendor=f.vendor,
@@ -280,31 +346,52 @@ print('configs:')
 for key, value in cfg.items():
     print('{}= {}'.format(key, value))
 
-status_report = get_lmstatus()
-if status_report:
-    features = []
-    # extract data chunks
-    features_data = status_report.split('Users of ')
-    server_data = features_data[0]
-    features_data.pop(0)
-    features_data[-1] = features_data[-1].split('NOTE:')[0]
+# process cli arguments
+# this is a secret feature to help push the old csv files to db server
+args = sys.argv[1:]
+if args[0] == 'pushf':
+    for ff in sorted(os.listdir(args[1])):
+        exist_feats = read_features(op.join(args[1], ff))
+        print('{} feature records read from file: {}'
+              .format(len(exist_feats), ff))
+        if exist_feats:
+            push_features(exist_feats, get_db(cfg), cfg)
 
-    # process the output and extract license usage info (issued vs used)
-    for feat_data in features_data:
-        lmf = extract_feature(feat_data, timestamp, lmversion)
-        if lmf:
-            features.append(lmf)
+elif args[0] == 'pushu':
+    for ff in sorted(os.listdir(args[1])):
+        exist_feat = read_users(op.join(args[1], ff))
+        print('{} user records read from file: {}'
+              .format(len(exist_feat.users), ff))
+        if exist_feat.users:
+            push_users([exist_feat], get_db(cfg), cfg)
 
-    # check whether to log usage
-    write_users_log = cfg['logusers'].lower() == 'true'
-    # write the license usage info
-    if cfg['usedb']:
-        db = get_db(cfg)
-        push_features(features, db, cfg)
-        if write_users_log:
-            push_users(features, db, cfg)
-    else:
-        logpath = cfg['logpath']
-        write_features(features, logpath)
-        if write_users_log:
-            write_users(features, logpath)
+else:
+    # othewise pull the lm status and update
+    status_report = get_lmstatus()
+    if status_report:
+        features = []
+        # extract data chunks
+        features_data = status_report.split('Users of ')
+        server_data = features_data[0]
+        features_data.pop(0)
+        features_data[-1] = features_data[-1].split('NOTE:')[0]
+
+        # process the output and extract license usage info (issued vs used)
+        for feat_data in features_data:
+            lmf = extract_feature(feat_data, timestamp, lmversion)
+            if lmf:
+                features.append(lmf)
+
+        # check whether to log usage
+        write_users_log = cfg['logusers'].lower() == 'true'
+        # write the license usage info
+        if cfg['usedb']:
+            db = get_db(cfg)
+            push_features(features, db, cfg)
+            if write_users_log:
+                push_users(features, db, cfg)
+        else:
+            logpath = cfg['logpath']
+            write_features(features, logpath)
+            if write_users_log:
+                write_users(features, logpath)
