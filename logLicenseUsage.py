@@ -349,22 +349,22 @@ for key, value in cfg.items():
 # process cli arguments
 # this is a secret feature to help push the old csv files to db server
 args = sys.argv[1:]
-if args[0] == 'pushf':
-    for ff in sorted(os.listdir(args[1])):
-        exist_feats = read_features(op.join(args[1], ff))
-        print('{} feature records read from file: {}'
-              .format(len(exist_feats), ff))
-        if exist_feats:
-            push_features(exist_feats, get_db(cfg), cfg)
+if args:
+    if args[0] == 'pushf':
+        for ff in sorted(os.listdir(args[1])):
+            exist_feats = read_features(op.join(args[1], ff))
+            print('{} feature records read from file: {}'
+                .format(len(exist_feats), ff))
+            if exist_feats:
+                push_features(exist_feats, get_db(cfg), cfg)
 
-elif args[0] == 'pushu':
-    for ff in sorted(os.listdir(args[1])):
-        exist_feat = read_users(op.join(args[1], ff))
-        print('{} user records read from file: {}'
-              .format(len(exist_feat.users), ff))
-        if exist_feat.users:
-            push_users([exist_feat], get_db(cfg), cfg)
-
+    elif args[0] == 'pushu':
+        for ff in sorted(os.listdir(args[1])):
+            exist_feat = read_users(op.join(args[1], ff))
+            print('{} user records read from file: {}'
+                .format(len(exist_feat.users), ff))
+            if exist_feat.users:
+                push_users([exist_feat], get_db(cfg), cfg)
 else:
     # othewise pull the lm status and update
     status_report = get_lmstatus()
