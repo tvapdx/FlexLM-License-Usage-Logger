@@ -9,6 +9,7 @@ import configparser
 from collections import namedtuple
 
 import records
+import requests
 
 
 # INTERNAL CONFIGS ============================================================
@@ -443,3 +444,9 @@ else:
             write_features(features, logpath)
             if write_users_log:
                 write_users(features, logpath)
+        
+        success = True
+        if cfg['ping']:
+            URL = cfg['pingurl']
+            if URL:
+                requests.get(URL if success else URL + "/fail")

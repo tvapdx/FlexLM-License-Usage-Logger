@@ -6,6 +6,7 @@ name = "pypi"
 [packages]
 records = "*"
 "psycopg2" = "*"
+requests = "*"
 
 [dev-packages]
 
