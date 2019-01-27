@@ -11,6 +11,7 @@ The script expects minimum configuration below, at config file:
 [DEFAULT]
 logusers = True or False
 logpath = \\shareddrive\flexlm\Logs
+licfile = C:\Autodesk\Network License Manager\LicenseFile.lic
 usedb = True or False
 dbms = postgres
 dbhost = 192.168.000.000

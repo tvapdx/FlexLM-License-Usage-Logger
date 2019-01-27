@@ -301,6 +301,7 @@ def push_users(features, db, cfg):
     data_values = []
     for f in features:
         for u in f.users:
+            print('+ pushing %s users of "%s"' % (len(f.users), f.feature_code))
             data_values.append(query_values_template.format(
                 fcode=u.feature_code,
                 userid=u.userid,
@@ -313,8 +314,9 @@ def push_users(features, db, cfg):
                 ctime=u.checkout_datetime,
                 utime=u.update_time
             ))
-    insertquery += ', '.join(data_values) + ';'
-    db.query(insertquery)
+    if data_values:
+        insertquery += ', '.join(data_values) + ';'
+        db.query(insertquery)
 
 
 def push_features(features, db, cfg):
@@ -325,6 +327,7 @@ def push_features(features, db, cfg):
         "'{lictype}', '{issued}', '{used}', '{ausers}')"
     data_values = []
     for f in features:
+        print('+ pushing "%s" with %s users' % (f.feature_code, len(f.users)))
         data_values.append(query_values_template.format(
             dtime=f.timestamp,
             fcode=f.feature_code,
@@ -335,8 +338,9 @@ def push_features(features, db, cfg):
             used=f.used,
             ausers=len(f.users),
         ))
-    insertquery += ', '.join(data_values) + ';'
-    db.query(insertquery)
+    if data_values:
+        insertquery += ', '.join(data_values) + ';'
+        db.query(insertquery)
 
 
 def push_featcodes(featcodes, db, cfg):
@@ -363,14 +367,14 @@ def determine_lmutil_version():
         return verm.groups()[0]
 
 
-def get_lmstatus():
+def get_lmstatus(configs):
     # grab lmutil license manager status output
-    lic_file = 'C:/Autodesk/Network License Manager/2018 License File.lic'
+    lic_file = configs['licfile']
     if op.exists(lic_file):
         command = 'lmutil lmstat -c "{}" -a -i'.format(lic_file)
     else:
         command = 'lmutil lmstat -a -i'
-    result  = subprocess.run(command, stdout=subprocess.PIPE)
+    result = subprocess.run(command, stdout=subprocess.PIPE)
     return result.stdout.decode('utf-8')
 
 
@@ -416,7 +420,7 @@ if args:
                 push_featcodes(featcodes, get_db(cfg), cfg)
 else:
     # othewise pull the lm status and update
-    status_report = get_lmstatus()
+    status_report = get_lmstatus(cfg)
     if status_report:
         features = []
         # extract data chunks
