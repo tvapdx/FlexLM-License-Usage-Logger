@@ -7,6 +7,7 @@ name = "pypi"
 records = "*"
 "psycopg2" = "*"
 requests = "*"
+pyyaml = "*"
 
 [dev-packages]
 
