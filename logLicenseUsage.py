@@ -369,13 +369,17 @@ def determine_lmutil_version():
 
 def get_lmstatus(configs):
     # grab lmutil license manager status output
-    lic_file = configs['licfile']
-    if op.exists(lic_file):
-        command = 'lmutil lmstat -c "{}" -a -i'.format(lic_file)
-    else:
-        command = 'lmutil lmstat -a -i'
-    result = subprocess.run(command, stdout=subprocess.PIPE)
-    return result.stdout.decode('utf-8')
+    # lic_file = configs['licfile']
+    lic_files = configs['licfile'].split(';')
+    return_result = ''
+    for lic_file in lic_files:
+        if op.exists(lic_file):
+            command = 'lmutil lmstat -c "{}" -a -i'.format(lic_file)
+        else:
+            command = 'lmutil lmstat -a -i'
+        result = subprocess.run(command, stdout=subprocess.PIPE)
+        return_result = return_result + result.stdout.decode('utf-8')
+    return return_result
 
 
 # MAIN() ======================================================================
